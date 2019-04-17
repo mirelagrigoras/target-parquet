@@ -1,0 +1,5 @@
+{
+	"disable_collection" : false,
+    "destination_path": "/path/to/the/directory/where/you/want/your/file",
+    "compression_method": "gzip"
+}
