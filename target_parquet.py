@@ -54,6 +54,16 @@ def flatten(dictionary, parent_key = '', sep = '__'):
         else:
             items.append((new_key, str(v) if type(v) is list else v))
     return dict(items)
+
+def set_mixed_type_column_types(df):
+    for col in df.columns:
+        col_has_mixed_types = (df[[col]].applymap(type) != df[[col]].iloc[0].apply(type)).any(axis=1)
+        if len(df[col_has_mixed_types]) > 0:
+            df[col] = df[col].astype(str)
+
+        if df[col].dtype == list:
+            df[col] = df[col].astype(str)
+    return df
         
 def persist_messages(messages, destination_path, compression_method = None):
     state = None
@@ -96,7 +106,7 @@ def persist_messages(messages, destination_path, compression_method = None):
         LOGGER.info("There were not any records retrieved.")
         return state
     # Create a dataframe out of the record list and store it into a parquet file with the timestamp in the name.
-    dataframe = pd.DataFrame(records)
+    dataframe = set_mixed_type_column_types(pd.DataFrame(records))
     filename =  stream_name + '-' + timestamp + '.parquet'
     filepath = os.path.expanduser(os.path.join(destination_path, filename))
     if compression_method:
