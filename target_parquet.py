@@ -57,7 +57,7 @@ def flatten(dictionary, parent_key='', sep='__'):
     return dict(items)
 
 
-def persist_messages(messages, destination_path, compression_method=None):
+def persist_messages(messages, destination_path, compression_method=None, streams_in_separate_folder=False):
     state = None
     schemas = {}
     key_properties = {}
@@ -67,18 +67,22 @@ def persist_messages(messages, destination_path, compression_method=None):
     if compression_method:
         # The target is prepared to accept all the compression methods provided by the pandas module, with the mapping below,
         extension_mapping = {
-            #'LZ4': '.lz4', # should be supported by Pyarrow in the future, but has issues atm
-            ## Should de reintroduced when this fix arrives in the pip package: https://github.com/apache/arrow/issues/3491
+            'SNAPPY': '.snappy',
             'GZIP': '.gz',
             'BROTLI': '.br',
-            'ZSTD': '.zstd',
-            'SNAPPY': '.snappy'
+            'ZSTD': '.zstd'
+            #'LZ4': '.lz4', # should be supported by Pyarrow in the future, but has issues atm
+            ## Should de reintroduced when this fix arrives in the pip package: https://github.com/apache/arrow/issues/3491
         }
         compression_extension = extension_mapping.get(compression_method.upper())
         if compression_extension is None:
             LOGGER.warning("unsuported compression method.")
             compression_extension = ""
             compression_method = None
+    filename_separator = "-"
+    if streams_in_separate_folder:
+        LOGGER.info("writing streams in separate folders")
+        filename_separator = os.path.sep
 
     for message in messages:
         try:
@@ -120,9 +124,11 @@ def persist_messages(messages, destination_path, compression_method=None):
     # Create a dataframe out of the record list and store it into a parquet file with the timestamp in the name.
     for stream_name in records.keys():
         dataframe = pd.DataFrame(records[stream_name])
-        filename = stream_name + '-' + timestamp
+        if streams_in_separate_folder and not os.path.exists(stream_name):
+            os.mkdir(os.path.join(destination_path, stream_name))
+        filename = stream_name + filename_separator + timestamp + compression_extension + '.parquet'
         filepath = os.path.expanduser(os.path.join(destination_path, filename))
-        dataframe.to_parquet(filepath + compression_extension + '.parquet', engine='pyarrow', compression=compression_method)
+        dataframe.to_parquet(filepath, engine='pyarrow', compression=compression_method)
     return state
 
 
@@ -164,7 +170,7 @@ def main():
     input_messages = io.TextIOWrapper(sys.stdin.buffer, encoding='utf-8')
     state = persist_messages(input_messages,
                              config.get('destination_path', ''),
-                             config.get('compression_method'))
+                             config.get('compression_method'), config.get('streams_in_separate_folder', False))
 
     emit_state(state)
     LOGGER.debug("Exiting normally")
