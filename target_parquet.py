@@ -83,6 +83,8 @@ def persist_messages(messages, destination_path, compression_method=None, stream
     if streams_in_separate_folder:
         LOGGER.info("writing streams in separate folders")
         filename_separator = os.path.sep
+    if not os.path.exists(destination_path):
+            os.makedirs(destination_path)
 
     for message in messages:
         try:
@@ -124,8 +126,8 @@ def persist_messages(messages, destination_path, compression_method=None, stream
     # Create a dataframe out of the record list and store it into a parquet file with the timestamp in the name.
     for stream_name in records.keys():
         dataframe = pd.DataFrame(records[stream_name])
-        if streams_in_separate_folder and not os.path.exists(stream_name):
-            os.mkdir(os.path.join(destination_path, stream_name))
+        if streams_in_separate_folder and not os.path.exists(os.path.join(destination_path, stream_name)):
+            os.makedirs(os.path.join(destination_path, stream_name))
         filename = stream_name + filename_separator + timestamp + compression_extension + '.parquet'
         filepath = os.path.expanduser(os.path.join(destination_path, filename))
         dataframe.to_parquet(filepath, engine='pyarrow', compression=compression_method)
@@ -145,7 +147,7 @@ def send_usage_stats():
             'se_la': version,
         }
         conn.request('GET', '/i?' + urllib.parse.urlencode(params))
-        response = conn.getresponse()
+        conn.getresponse()
         conn.close()
     except:
         LOGGER.debug('Collection request failed')
