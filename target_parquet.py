@@ -13,6 +13,8 @@ import pyarrow
 import singer
 import sys
 import urllib
+import psutil
+import time
 import threading
 
 LOGGER = singer.get_logger()
@@ -25,6 +27,19 @@ def emit_state(state):
         sys.stdout.write("{}\n".format(line))
         sys.stdout.flush()
 
+class MemoryReporter(threading.Thread):
+    '''Logs memory usage every 30 seconds'''
+
+    def __init__(self):
+        self.process = psutil.Process()
+        super().__init__(name='memory_reporter', daemon=True)
+
+    def run(self):
+        while True:
+            LOGGER.debug('Virtual memory usage: %.2f%% of total: %s',
+                         self.process.memory_percent(),
+                         self.process.memory_info())
+            time.sleep(30.0)
 
 def flatten(dictionary, parent_key='', sep='__'):
     '''Function that flattens a nested structure, using the separater given as parameter, or uses '__' as default
@@ -170,6 +185,7 @@ def main():
         threading.Thread(target=send_usage_stats).start()
     # The target expects that the tap generates UTF-8 encoded text.
     input_messages = io.TextIOWrapper(sys.stdin.buffer, encoding='utf-8')
+    MemoryReporter().start()
     state = persist_messages(input_messages,
                              config.get('destination_path', ''),
                              config.get('compression_method'), config.get('streams_in_separate_folder', False))

@@ -13,7 +13,8 @@ setup(name='target-parquet',
           'jsonschema==2.6.0',
           'singer-python==5.9.0',
           'pandas==1.1.3',
-          'pyarrow==1.0.1'
+          'pyarrow==1.0.1',
+          'psutil==5.7.2',
       ],
       entry_points='''
           [console_scripts]
