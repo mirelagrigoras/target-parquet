@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 from datetime import datetime
-import io
+from io import TextIOWrapper
 import http.client
 import simplejson as json
 from jsonschema.validators import Draft4Validator
@@ -15,43 +15,13 @@ import urllib
 import psutil
 import time
 import threading
-import collections
 import gc
+
+from .helpers import flatten
 
 _all__ = ["main"]
 
 LOGGER = singer.get_logger()
-
-
-def flatten(dictionary, parent_key="", sep="__"):
-    """Function that flattens a nested structure, using the separater given as parameter, or uses '__' as default
-    E.g:
-     dictionary =  {
-                        'key_1': 1,https://github.com/apache/arrow/issues/3491
-                        'key_2': {
-                               'key_3': 2,
-                               'key_4': {
-                                      'key_5': 3,
-                                      'key_6' : ['10', '11']
-                                 }
-                        }
-                       }
-    By calling the function with the dictionary above as parameter, you will get the following strucure:
-        {
-             'key_1': 1,
-             'key_2__key_3': 2,
-             'key_2__key_4__key_5': 3,
-             'key_2__key_4__key_6': "['10', '11']"
-         }
-    """
-    items = []
-    for k, v in dictionary.items():
-        new_key = parent_key + sep + k if parent_key else k
-        if isinstance(v, collections.MutableMapping):
-            items.extend(flatten(v, new_key, sep=sep).items())
-        else:
-            items.append((new_key, str(v) if type(v) is list else v))
-    return dict(items)
 
 
 def emit_state(state):
@@ -217,7 +187,7 @@ def main():
         )
         threading.Thread(target=send_usage_stats).start()
     # The target expects that the tap generates UTF-8 encoded text.
-    input_messages = io.TextIOWrapper(sys.stdin.buffer, encoding="utf-8")
+    input_messages = TextIOWrapper(sys.stdin.buffer, encoding="utf-8")
     MemoryReporter().start()
     state = persist_messages(
         input_messages,
