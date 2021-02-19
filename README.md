@@ -51,9 +51,12 @@ To run `target-parquet` with the configuration file, use this command:
 ~/.virtualenvs/tap-exchangeratesapi/bin/tap-exchangeratesapi | ~/.virtualenvs/target-parquet/bin/target-parquet -c config.json
 ```
 
----
+### Setting the Logging Level
 
-Copyright &copy; 2017 Stitch
+There are two ways to set the logging level. If both are set, the config file has higher priority. The default value is `INFO`.
+
+- `LOGGER_LEVEL` Enviroment variable. Set it to INFO, DEBUG or any other valid value
+- config file. Set the same values in the `logging_level` key.
 
 [singer tap]: https://singer.io
 [targetcsv]: https://github.com/singer-io/target-csv

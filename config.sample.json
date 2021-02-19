@@ -1,6 +1,7 @@
 {
   "disable_collection": false,
-  "destination_path": "/path/to/the/directory/where/you/want/your/file",
+  "logging_level": "INFO",
+  "destination_path": "/path/to/the/output/directory/",
   "compression_method": "snappy",
   "streams_in_separate_folder": false
 }
