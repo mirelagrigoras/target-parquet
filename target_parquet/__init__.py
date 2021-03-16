@@ -56,6 +56,7 @@ def persist_messages(
     destination_path,
     compression_method=None,
     streams_in_separate_folder=False,
+    file_size=-1,
 ):
     ## Static information shared among processes
     schemas = {}
@@ -151,14 +152,14 @@ def persist_messages(
         del dataframe
         return filepath
 
-    def consumer(reciever):
+    def consumer(receiver):
         files_created = []
         current_stream_name = None
         # records is a list of dictionary of lists of dictionaries that will contain the records that are retrieved from the tap
         records = {}
 
         while True:
-            (stream_name, record) = reciever.get()  # q.get()
+            (stream_name, record) = receiver.get()  # q.get()
             if type(stream_name) is object:
                 files_created.append(
                     write_file(
@@ -183,6 +184,15 @@ def persist_messages(
                 records[stream_name] = [record]
             else:
                 records[stream_name].append(record)
+                if (file_size > 0) and \
+                   (not len(records[stream_name]) % file_size):
+                    files_created.append(
+                        write_file(
+                            current_stream_name,
+                            records.pop(current_stream_name),
+                        )
+                    )
+                    gc.collect()
 
     q = Queue()
     t2 = Process(
@@ -243,6 +253,7 @@ def main():
         config.get("destination_path", "."),
         config.get("compression_method", None),
         config.get("streams_in_separate_folder", False),
+        int(config.get("file_size", -1))
     )
 
     emit_state(state)
