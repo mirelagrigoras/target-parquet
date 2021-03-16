@@ -151,14 +151,14 @@ def persist_messages(
         del dataframe
         return filepath
 
-    def consumer(reciever):
+    def consumer(receiver):
         files_created = []
         current_stream_name = None
         # records is a list of dictionary of lists of dictionaries that will contain the records that are retrieved from the tap
         records = {}
 
         while True:
-            (stream_name, record) = reciever.get()  # q.get()
+            (stream_name, record) = receiver.get()  # q.get()
             if type(stream_name) is object:
                 files_created.append(
                     write_file(
