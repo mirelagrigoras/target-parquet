@@ -113,7 +113,7 @@ def persist_messages(
                     stream_name = message["stream"]
                     validators[message["stream"]].validate(message["record"])
                     flattened_record = flatten(message["record"])
-                    LOGGER.debug(f"SAMPLE RECORD {repr(flattened_record[:5])}")
+                    LOGGER.debug(f"SAMPLE RECORD {repr(flattened_record)}")
                     # Once the record is flattenned, it is added to the final record list, which will be stored in the parquet file.
                     w_queue.put((stream_name, flattened_record))
                     state = None
