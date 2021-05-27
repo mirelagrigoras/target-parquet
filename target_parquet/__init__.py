@@ -34,6 +34,9 @@ def emit_state(state):
         sys.stdout.flush()
 
 
+def parse_schema(schema):
+
+
 class MemoryReporter(threading.Thread):
     """Logs memory usage every 30 seconds"""
 
@@ -109,6 +112,7 @@ def persist_messages(
                     stream_name = message["stream"]
                     validators[message["stream"]].validate(message["record"])
                     flattened_record = flatten(message["record"])
+                    LOGGER.debug(f"SAMPLE RECORD {repr(flattened_record[:5])}")
                     # Once the record is flattenned, it is added to the final record list, which will be stored in the parquet file.
                     w_queue.put((stream_name, flattened_record))
                     state = None
@@ -118,7 +122,7 @@ def persist_messages(
                 elif message_type == "SCHEMA":
                     stream = message["stream"]
                     LOGGER.debug(f"Schema: {message['schema']}")
-                    schemas[stream] = message["schema"]
+                    schemas[stream] = parse_schema(message["schema"])
                     validators[stream] = Draft4Validator(message["schema"])
                     key_properties[stream] = message["key_properties"]
                 else:
