@@ -35,6 +35,7 @@ def emit_state(state):
 
 
 def parse_schema(schema):
+    return schema
 
 
 class MemoryReporter(threading.Thread):
