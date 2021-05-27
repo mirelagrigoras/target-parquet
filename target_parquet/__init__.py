@@ -117,6 +117,7 @@ def persist_messages(
                     state = message["value"]
                 elif message_type == "SCHEMA":
                     stream = message["stream"]
+                    LOGGER.debug(f"Schema: {message['schema']}")
                     schemas[stream] = message["schema"]
                     validators[stream] = Draft4Validator(message["schema"])
                     key_properties[stream] = message["key_properties"]
