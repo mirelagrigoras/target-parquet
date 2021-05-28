@@ -16,6 +16,7 @@ import psutil
 import time
 import threading
 import gc
+from enum import Enum
 from multiprocessing import Process, Queue
 
 from .helpers import flatten
@@ -25,6 +26,11 @@ _all__ = ["main"]
 LOGGER = singer.get_logger()
 LOGGER.setLevel(os.getenv("LOGGER_LEVEL", "INFO"))
 
+
+class MessageType(Enum):
+    RECORD = 1
+    STATE  = 2
+    SCHEMA = 3
 
 def emit_state(state):
     if state is not None:
@@ -115,7 +121,7 @@ def persist_messages(
                     flattened_record = flatten(message["record"])
                     LOGGER.debug(f"SAMPLE RECORD {repr(flattened_record)}")
                     # Once the record is flattenned, it is added to the final record list, which will be stored in the parquet file.
-                    w_queue.put((stream_name, flattened_record))
+                    w_queue.put((MessageType.RECORD, stream_name, flattened_record))
                     state = None
                 elif message_type == "STATE":
                     LOGGER.debug("Setting state to {}".format(message["value"]))
@@ -126,6 +132,7 @@ def persist_messages(
                     schemas[stream] = parse_schema(message["schema"])
                     validators[stream] = Draft4Validator(message["schema"])
                     key_properties[stream] = message["key_properties"]
+                    w_queue.put((MessageType.SCHEMA, stream, schemas[stream]))
                 else:
                     LOGGER.warning(
                         "Unknown message type {} in message {}".format(
@@ -165,7 +172,7 @@ def persist_messages(
         records = {}
 
         while True:
-            (stream_name, record) = receiver.get()  # q.get()
+            (message_type, stream_name, record) = receiver.get()  # q.get()
             if type(stream_name) is object:
                 files_created.append(
                     write_file(
