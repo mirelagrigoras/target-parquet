@@ -31,6 +31,7 @@ class MessageType(Enum):
     RECORD = 1
     STATE  = 2
     SCHEMA = 3
+    EOF    = 4
 
 def emit_state(state):
     if state is not None:
@@ -139,10 +140,10 @@ def persist_messages(
                             message["type"], message
                         )
                     )
-            w_queue.put((_break_object, None))
+            w_queue.put((MessageType.EOF, _break_object, None))
             return state
         except Exception as Err:
-            w_queue.put((_break_object, None))
+            w_queue.put((MessageType.EOF, _break_object, None))
             raise Err
 
     def write_file(current_stream_name, record):
@@ -174,16 +175,6 @@ def persist_messages(
         while True:
             (message_type, stream_name, record) = receiver.get()  # q.get()
             if message_type == MessageType.RECORD:
-                if type(stream_name) is object:
-                    files_created.append(
-                        write_file(
-                            current_stream_name,
-                            records.pop(current_stream_name),
-                        )
-                    )
-                    LOGGER.info(f"Wrote {len(files_created)} files")
-                    LOGGER.debug(f"Wrote {files_created} files")
-                    break
                 if (stream_name != current_stream_name) and (current_stream_name != None):
                     files_created.append(
                         write_file(
@@ -209,6 +200,16 @@ def persist_messages(
                         gc.collect()
             elif message_type == MessageType.SCHEMA:
                 LOGGER.debug(f'Got {stream_name} schema from queue')
+            elif message_type == MessageType.EOF:
+                files_created.append(
+                    write_file(
+                        current_stream_name,
+                        records.pop(current_stream_name),
+                    )
+                )
+                LOGGER.info(f"Wrote {len(files_created)} files")
+                LOGGER.debug(f"Wrote {files_created} files")
+                break
 
     q = Queue()
     t2 = Process(
