@@ -120,7 +120,6 @@ def persist_messages(
                     stream_name = message["stream"]
                     validators[message["stream"]].validate(message["record"])
                     flattened_record = flatten(message["record"])
-                    LOGGER.debug(f"SAMPLE RECORD {repr(flattened_record)}")
                     # Once the record is flattenned, it is added to the final record list, which will be stored in the parquet file.
                     w_queue.put((MessageType.RECORD, stream_name, flattened_record))
                     state = None
@@ -146,7 +145,7 @@ def persist_messages(
             w_queue.put((MessageType.EOF, _break_object, None))
             raise Err
 
-    def write_file(current_stream_name, record):
+    def write_file(current_stream_name, record, schema):
         timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S-%f")
         dataframe = pd.DataFrame(record)
         if streams_in_separate_folder and not os.path.exists(
@@ -171,6 +170,7 @@ def persist_messages(
         current_stream_name = None
         # records is a list of dictionary of lists of dictionaries that will contain the records that are retrieved from the tap
         records = {}
+        schemas = {}
 
         while True:
             (message_type, stream_name, record) = receiver.get()  # q.get()
@@ -180,6 +180,7 @@ def persist_messages(
                         write_file(
                             current_stream_name,
                             records.pop(current_stream_name),
+                            schemas[current_stream_name]
                         )
                     )
                     ## explicit memory management. This can be usefull when working on very large data groups
@@ -199,12 +200,13 @@ def persist_messages(
                         )
                         gc.collect()
             elif message_type == MessageType.SCHEMA:
-                LOGGER.debug(f'Got {stream_name} schema from queue')
+                schemas[stream_name] = record
             elif message_type == MessageType.EOF:
                 files_created.append(
                     write_file(
                         current_stream_name,
                         records.pop(current_stream_name),
+                        schemas[current_stream_name]
                     )
                 )
                 LOGGER.info(f"Wrote {len(files_created)} files")
