@@ -173,39 +173,42 @@ def persist_messages(
 
         while True:
             (message_type, stream_name, record) = receiver.get()  # q.get()
-            if type(stream_name) is object:
-                files_created.append(
-                    write_file(
-                        current_stream_name,
-                        records.pop(current_stream_name),
-                    )
-                )
-                LOGGER.info(f"Wrote {len(files_created)} files")
-                LOGGER.debug(f"Wrote {files_created} files")
-                break
-            if (stream_name != current_stream_name) and (current_stream_name != None):
-                files_created.append(
-                    write_file(
-                        current_stream_name,
-                        records.pop(current_stream_name),
-                    )
-                )
-                ## explicit memory management. This can be usefull when working on very large data groups
-                gc.collect()
-            current_stream_name = stream_name
-            if type(records.get(stream_name)) != list:
-                records[stream_name] = [record]
-            else:
-                records[stream_name].append(record)
-                if (file_size > 0) and \
-                   (not len(records[stream_name]) % file_size):
+            if message_type == MessageType.RECORD:
+                if type(stream_name) is object:
                     files_created.append(
                         write_file(
                             current_stream_name,
                             records.pop(current_stream_name),
                         )
                     )
+                    LOGGER.info(f"Wrote {len(files_created)} files")
+                    LOGGER.debug(f"Wrote {files_created} files")
+                    break
+                if (stream_name != current_stream_name) and (current_stream_name != None):
+                    files_created.append(
+                        write_file(
+                            current_stream_name,
+                            records.pop(current_stream_name),
+                        )
+                    )
+                    ## explicit memory management. This can be usefull when working on very large data groups
                     gc.collect()
+                current_stream_name = stream_name
+                if type(records.get(stream_name)) != list:
+                    records[stream_name] = [record]
+                else:
+                    records[stream_name].append(record)
+                    if (file_size > 0) and \
+                    (not len(records[stream_name]) % file_size):
+                        files_created.append(
+                            write_file(
+                                current_stream_name,
+                                records.pop(current_stream_name),
+                            )
+                        )
+                        gc.collect()
+            elif message_type == MessageType.SCHEMA:
+                LOGGER.debug(f'Got {stream_name} schema from queue')
 
     q = Queue()
     t2 = Process(
