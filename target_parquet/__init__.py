@@ -6,9 +6,9 @@ import http.client
 import simplejson as json
 from jsonschema.validators import Draft4Validator
 import os
-import pandas as pd
 import pkg_resources
 import pyarrow as pa
+from pyarrow.parquet import ParquetWriter
 import singer
 import sys
 import urllib
@@ -26,6 +26,9 @@ _all__ = ["main"]
 LOGGER = singer.get_logger()
 LOGGER.setLevel(os.getenv("LOGGER_LEVEL", "INFO"))
 
+def pivot_dictionary(list_dict, fields):
+    return {f: [row.get(f) for row in list_dict] for f in fields}
+
 
 class MessageType(Enum):
     RECORD = 1
@@ -42,7 +45,7 @@ def emit_state(state):
 
 
 def parse_schema(schema):
-    return schema
+    return list(schema['properties'].keys())
 
 
 class MemoryReporter(threading.Thread):
@@ -129,8 +132,8 @@ def persist_messages(
                 elif message_type == "SCHEMA":
                     stream = message["stream"]
                     LOGGER.debug(f"Schema: {message['schema']}")
-                    schemas[stream] = parse_schema(message["schema"])
                     validators[stream] = Draft4Validator(message["schema"])
+                    schemas[stream] = parse_schema(message["schema"])
                     key_properties[stream] = message["key_properties"]
                     w_queue.put((MessageType.SCHEMA, stream, schemas[stream]))
                 else:
@@ -147,7 +150,7 @@ def persist_messages(
 
     def write_file(current_stream_name, record, schema):
         timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S-%f")
-        dataframe = pd.DataFrame(record)
+        dataframe = pa.table(pivot_dictionary(record, schema))
         if streams_in_separate_folder and not os.path.exists(
             os.path.join(destination_path, current_stream_name)
         ):
@@ -160,7 +163,9 @@ def persist_messages(
             + ".parquet"
         )
         filepath = os.path.expanduser(os.path.join(destination_path, filename))
-        dataframe.to_parquet(filepath, engine="pyarrow", compression=compression_method)
+        ParquetWriter(filepath,
+                      dataframe.schema,
+                      compression=compression_method).write_table(dataframe)
         ## explicit memory management. This can be usefull when working on very large data groups
         del dataframe
         return filepath
