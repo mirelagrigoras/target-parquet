@@ -4,7 +4,7 @@ from setuptools import setup
 
 setup(
     name="target-parquet",
-    version="0.2.1",
+    version="0.2.2",
     description="Singer.io target for writing into parquet files",
     author="Rafael 'Auyer' Passos",
     url="https://singer.io",
