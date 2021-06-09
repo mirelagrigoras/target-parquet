@@ -201,6 +201,7 @@ def persist_messages(
                             write_file(
                                 current_stream_name,
                                 records.pop(current_stream_name),
+                                schemas[current_stream_name]
                             )
                         )
                         gc.collect()
