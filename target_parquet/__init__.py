@@ -44,10 +44,6 @@ def emit_state(state):
         sys.stdout.flush()
 
 
-def parse_schema(schema):
-    return list(schema['properties'].keys())
-
-
 class MemoryReporter(threading.Thread):
     """Logs memory usage every 30 seconds"""
 
@@ -131,9 +127,9 @@ def persist_messages(
                     state = message["value"]
                 elif message_type == "SCHEMA":
                     stream = message["stream"]
-                    LOGGER.debug(f"Schema: {message['schema']}")
                     validators[stream] = Draft4Validator(message["schema"])
-                    schemas[stream] = parse_schema(message["schema"])
+                    schemas[stream] = flatten_schema(message["schema"]["properties"])
+                    LOGGER.debug(f"Schema: {schemas[stream]}")
                     key_properties[stream] = message["key_properties"]
                     w_queue.put((MessageType.SCHEMA, stream, schemas[stream]))
                 else:
