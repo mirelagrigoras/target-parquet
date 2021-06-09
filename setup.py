@@ -14,8 +14,7 @@ setup(
         "jsonschema==2.6.0",
         "singer-python==5.10",
         # 'simplejson==3.11.1', # is a depedency of singer-python
-        "pandas==1.2",
-        "pyarrow==3.0",
+        "pyarrow==4.0.1",
         "psutil==5.8",
     ],
     entry_points="""
